@@ -3,13 +3,26 @@ const historyList = document.getElementById('historyList');
 const clearBtn = document.getElementById('clearBtn');
 
 function sendToBackground(message, onSuccess) {
-  chrome.runtime.sendMessage(message, (response) => {
-    if (chrome.runtime.lastError) {
-      console.warn(chrome.runtime.lastError.message);
+  try {
+    const runtime = chrome.runtime;
+    if (runtime == null || typeof runtime.sendMessage !== 'function') {
       return;
     }
-    if (onSuccess) onSuccess(response);
-  });
+
+    runtime.sendMessage(message, (response) => {
+      try {
+        if (runtime.lastError) {
+          console.warn(runtime.lastError.message);
+          return;
+        }
+        if (onSuccess) onSuccess(response);
+      } catch {
+        /* 擴充功能連線中斷 */
+      }
+    });
+  } catch {
+    /* 擴充功能連線中斷 */
+  }
 }
 
 // 格式化時間戳記
@@ -45,7 +58,8 @@ function loadHistory() {
     const history = response?.history;
 
     if (!history || history.length === 0) {
-      historyList.innerHTML = '<div class="empty-state">尚無紀錄</div>';
+      historyList.innerHTML =
+        '<div class="empty-state">尚無紀錄<br><span class="empty-hint">在網頁選取文字後按 Ctrl+C，會自動記錄在這裡</span></div>';
       return;
     }
 
