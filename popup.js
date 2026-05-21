@@ -1,5 +1,16 @@
+const STORAGE_KEY = 'clipboardHistory';
 const historyList = document.getElementById('historyList');
 const clearBtn = document.getElementById('clearBtn');
+
+function sendToBackground(message, onSuccess) {
+  chrome.runtime.sendMessage(message, (response) => {
+    if (chrome.runtime.lastError) {
+      console.warn(chrome.runtime.lastError.message);
+      return;
+    }
+    if (onSuccess) onSuccess(response);
+  });
+}
 
 // 格式化時間戳記
 function formatTime(timestamp) {
@@ -30,8 +41,8 @@ function getPreview(text, maxLength = 50) {
 
 // 載入並顯示歷史紀錄
 function loadHistory() {
-  chrome.runtime.sendMessage({ action: 'getHistory' }, (response) => {
-    const history = response.history;
+  sendToBackground({ action: 'getHistory' }, (response) => {
+    const history = response?.history;
 
     if (!history || history.length === 0) {
       historyList.innerHTML = '<div class="empty-state">尚無紀錄</div>';
@@ -96,7 +107,7 @@ function copyToClipboard(event, history) {
 // 刪除項目
 function deleteEntry(event) {
   const index = parseInt(event.target.dataset.index);
-  chrome.runtime.sendMessage({ action: 'removeEntry', index: index }, () => {
+  sendToBackground({ action: 'removeEntry', index: index }, () => {
     loadHistory();
   });
 }
@@ -104,15 +115,15 @@ function deleteEntry(event) {
 // 清空歷史
 clearBtn.addEventListener('click', () => {
   if (confirm('確定要清空所有紀錄嗎？')) {
-    chrome.runtime.sendMessage({ action: 'clearHistory' }, () => {
+    sendToBackground({ action: 'clearHistory' }, () => {
       loadHistory();
     });
   }
 });
 
-// 監聽來自 background 的更新通知
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'historyUpdated') {
+// background 寫入 storage 時自動更新（popup 開著時）
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes[STORAGE_KEY]) {
     loadHistory();
   }
 });

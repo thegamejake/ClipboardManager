@@ -34,13 +34,7 @@ async function addClipboardEntry(text) {
   }
 
   await saveClipboardHistory(history);
-
-  chrome.runtime.sendMessage({
-    action: 'historyUpdated',
-    history: history
-  }, () => {
-    // popup 未開啟時無需額外處理
-  });
+  // popup 透過 chrome.storage.onChanged 更新，避免 popup 關閉時 sendMessage 失敗
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {

@@ -56,12 +56,34 @@ function getCopiedText(event) {
   return '';
 }
 
+function isExtensionContextValid() {
+  try {
+    return Boolean(chrome.runtime?.id);
+  } catch {
+    return false;
+  }
+}
+
+function sendToBackground(payload) {
+  if (!isExtensionContextValid()) return false;
+
+  try {
+    chrome.runtime.sendMessage(payload, () => {
+      try {
+        void chrome.runtime.lastError;
+      } catch {
+        /* 擴充功能已重新載入 */
+      }
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function pushCopiedText(text) {
   if (!text || text.trim() === '') return;
-  chrome.runtime.sendMessage({
-    action: 'addToClipboard',
-    text
-  });
+  sendToBackground({ action: 'addToClipboard', text });
 }
 
 function tryReadClipboardWithRetries(delays = [0, 50, 150]) {
